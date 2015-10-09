@@ -97,10 +97,20 @@ def eval_math(ast, env):
     return MATH_FUNC[ast[0]](op1, op2)
 
 
+@expected_length(4)
+def eval_if(ast, env):
+    cond = evaluate(ast[1], env)
+    if cond:
+        return evaluate(ast[2], env)
+    else:
+        return evaluate(ast[3], env)
+
+
 SPECIAL_FORMS = {
     'quote': eval_quote,
     'atom': eval_atom,
     'eq': eval_eq,
+    'if': eval_if
 }
 
 
