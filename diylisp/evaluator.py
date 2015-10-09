@@ -23,7 +23,9 @@ in a day, after all.)
 def evaluate(ast, env):
     """Evaluate an Abstract Syntax Tree in the specified environment."""
 
-    if is_boolean(ast):
+    if is_symbol(ast):
+        return env.lookup(ast)
+    elif is_boolean(ast):
         return ast
     elif is_integer(ast):
         return ast
@@ -106,11 +108,22 @@ def eval_if(ast, env):
         return evaluate(ast[3], env)
 
 
+@expected_length(3)
+def eval_define(ast, env):
+    var = ast[1]
+    if not is_symbol(var):
+        raise LispError('non-symbol assigment')
+    val = evaluate(ast[2], env)
+    env.set(var, val)
+    return '{} = {}'.format(var, val)
+
+
 SPECIAL_FORMS = {
     'quote': eval_quote,
     'atom': eval_atom,
     'eq': eval_eq,
-    'if': eval_if
+    'if': eval_if,
+    'define': eval_define
 }
 
 
