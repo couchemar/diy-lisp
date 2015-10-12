@@ -30,11 +30,20 @@ def evaluate(ast, env):
     elif is_integer(ast):
         return ast
     elif is_list(ast):
+        if len(ast) == 0:
+            raise LispError("Calls on empty list")
+
         form = ast[0]
         if is_special_form(form):
             return eval_special_form(ast, env)
         elif is_math(form):
             return eval_math(ast, env)
+        elif is_closure(form):
+            return eval_closure(ast, env)
+        elif is_symbol(form):
+            return eval_user_form(ast, env)
+        else:
+            return call(ast, env)
 
     return ast
 
@@ -118,12 +127,53 @@ def eval_define(ast, env):
     return '{} = {}'.format(var, val)
 
 
+@expected_length(3)
+def eval_lambda(ast, env):
+    params = ast[1]
+    if not is_list(params):
+        raise LispError('Lambda parameters must be a list')
+    body = ast[2]
+    return Closure(env, params, body)
+
+
+def eval_closure(ast, env):
+    closure = ast[0]
+    args = [evaluate(arg, env) for arg in ast[1:]]
+    l_args = len(args)
+    l_params = len(closure.params)
+    if l_args != l_params:
+        raise LispError(
+            '{} wrong number of arguments, expected {} got {}'.format(
+                ast, l_params, l_args
+            )
+        )
+    env = closure.env.extend(dict(zip(closure.params, args)))
+    return evaluate(closure.body, env)
+
+
+def eval_user_form(ast, env):
+    closure = env.lookup(ast[0])
+    e = [closure]
+    e.extend(ast[1:])
+    return evaluate(e, env)
+
+
+def call(ast, env):
+    evaluated = [evaluate(a, env) for a in ast]
+    if not is_closure(evaluated[0]):
+        raise LispError("{} is not a function in {}".format(
+            evaluated[0], evaluated
+        ))
+    return evaluate(evaluated, env)
+
+
 SPECIAL_FORMS = {
     'quote': eval_quote,
     'atom': eval_atom,
     'eq': eval_eq,
     'if': eval_if,
-    'define': eval_define
+    'define': eval_define,
+    'lambda': eval_lambda
 }
 
 
