@@ -167,13 +167,53 @@ def call(ast, env):
     return evaluate(evaluated, env)
 
 
+@expected_length(3)
+def eval_cons(ast, env):
+    head = evaluate(ast[1], env)
+    tail = evaluate(ast[2], env)
+    return [head] + tail
+
+
+@expected_length(2)
+def eval_head(ast, env):
+    l = evaluate(ast[1], env)
+    if not is_list(l):
+        raise LispError('Evaluate head on non-list')
+    try:
+        return l[0]
+    except IndexError:
+        raise LispError('Evaluate head on an empty list')
+
+
+@expected_length(2)
+def eval_tail(ast, env):
+    l = evaluate(ast[1], env)
+    if not is_list(l):
+        raise LispError('Evaluate tail on non-list')
+    if len(l) == 0:
+        raise LispError('Evaluate tail on an empty list')
+    return l[1:]
+
+
+@expected_length(2)
+def eval_empty(ast, env):
+    l = evaluate(ast[1], env)
+    if not is_list(l):
+        raise LispError('Evaluate empty on non-list')
+    return len(l) == 0
+
+
 SPECIAL_FORMS = {
     'quote': eval_quote,
     'atom': eval_atom,
     'eq': eval_eq,
     'if': eval_if,
     'define': eval_define,
-    'lambda': eval_lambda
+    'lambda': eval_lambda,
+    'cons': eval_cons,
+    'head': eval_head,
+    'tail': eval_tail,
+    'empty': eval_empty
 }
 
 
