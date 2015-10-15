@@ -4,5 +4,95 @@
     (lambda (b)
         (if b #f #t)))
 
-;; DIY -- Implement the rest of your standard library
-;; here as part 7 of the workshop.
+(define or
+  (lambda (a b)
+    (if a #t (if b #t #f))))
+
+(define and
+  (lambda (a b)
+    (if a (if b #t #f) #f)))
+
+(define xor
+  (lambda (a b)
+    (and (or a b) (not (and a b)))))
+
+;; Comparison
+
+(define >=
+  (lambda (a b)
+    (or (> a b)
+        (eq a b))))
+
+(define <=
+  (lambda (a b)
+    (not (> a b))))
+
+(define <
+  (lambda (a b)
+    (not (>= a b))))
+
+;; Collection
+
+(define reduce
+  (lambda (f acc coll)
+    (if (empty coll)
+        acc
+      (reduce f (f acc (head coll)) (tail coll)))))
+
+(define range
+  (lambda (start stop)
+    (if (> start stop)
+        '()
+      (cons start (range (+ 1 start) stop)))))
+
+(define length
+  (lambda (coll)
+    (reduce (lambda (a b)
+              (+ a 1)) 0 coll)))
+
+(define sum
+  (lambda (coll)
+    (reduce (lambda (a b)
+              (+ a b)) 0 coll)))
+
+(define append
+  (lambda (lst1 lst2)
+    (if (empty lst1)
+        lst2
+      (cons (head lst1) (append (tail lst1) lst2)))))
+
+(define reverse
+  (lambda (coll)
+    (reduce (lambda (a b) (cons b a)) '() coll)))
+
+(define filter
+  (lambda (predicate coll)
+    (reverse (reduce (lambda (a b)
+                       (if (predicate b)
+                           (cons b a)
+                         a))
+                     '() coll))))
+
+(define map
+  (lambda (f coll)
+    (reverse (reduce (lambda (a b)
+              (cons (f b) a))
+            '() coll))))
+
+(define smaller
+  (lambda (lst pivot)
+    (filter (lambda (x) (<= x pivot)) lst)))
+
+(define greater
+  (lambda (lst pivot)
+    (filter (lambda (x) (> x pivot)) lst)))
+
+(define sort
+  (lambda (coll)
+    (if (empty coll)
+        '()
+      (append
+       (append
+        (sort (smaller (tail coll) (head coll)))
+        (cons (head coll) '()))
+       (sort (greater coll (head coll)))))))
