@@ -1,15 +1,4 @@
 # -*- coding: utf-8 -*-
-
-import operator
-from functools import wraps
-
-from .ast import (
-    is_atom, is_boolean, is_closure, is_integer, is_list, is_string, is_symbol
-)
-from .parser import unparse
-from .types import Closure, Environment, LispError, String
-
-
 """
 This is the Evaluator module. The `evaluate` function below is the heart
 of your language, and the focus for most of parts 2 through 6.
@@ -18,6 +7,14 @@ A score of useful functions is provided for you, as per the above imports,
 making your work a bit easier. (We're supposed to get through this thing
 in a day, after all.)
 """
+
+import operator
+from functools import wraps
+
+from .ast import (
+    is_atom, is_boolean, is_closure, is_integer, is_list, is_string, is_symbol
+)
+from .types import Closure, LispError, String
 
 
 def evaluate(ast, env):
@@ -64,7 +61,7 @@ def expected_length(ex_length):
 
 
 @expected_length(2)
-def eval_quote(ast, env):
+def eval_quote(ast, _):
     return ast[1]
 
 
@@ -127,13 +124,15 @@ def eval_define(ast, env):
     return '{} = {}'.format(var, val)
 
 
-@expected_length(3)
-def eval_lambda(ast, env):
-    params = ast[1]
+def make_lambda(params, body, env):
     if not is_list(params):
         raise LispError('Lambda parameters must be a list')
-    body = ast[2]
     return Closure(env, params, body)
+
+
+@expected_length(3)
+def eval_lambda(ast, env):
+    return make_lambda(ast[1], ast[2], env)
 
 
 def eval_closure(ast, env):
@@ -171,12 +170,16 @@ def call(ast, env):
 def eval_cons(ast, env):
     head = evaluate(ast[1], env)
     tail = evaluate(ast[2], env)
+    if is_string(head) and is_string(tail):
+        return String(head.val + tail.val)
     return [head] + tail
 
 
 @expected_length(2)
 def eval_head(ast, env):
     l = evaluate(ast[1], env)
+    if is_string(l):
+        return String(l.val[0])
     if not is_list(l):
         raise LispError('Evaluate head on non-list')
     try:
@@ -188,6 +191,8 @@ def eval_head(ast, env):
 @expected_length(2)
 def eval_tail(ast, env):
     l = evaluate(ast[1], env)
+    if is_string(l):
+        return String(l.val[1:])
     if not is_list(l):
         raise LispError('Evaluate tail on non-list')
     if len(l) == 0:
@@ -198,9 +203,43 @@ def eval_tail(ast, env):
 @expected_length(2)
 def eval_empty(ast, env):
     l = evaluate(ast[1], env)
+    if is_string(l):
+        return len(l.val) == 0
     if not is_list(l):
         raise LispError('Evaluate empty on non-list')
     return len(l) == 0
+
+
+def eval_cond(ast, env):
+    conses = ast[1]
+    for predicate, body in conses:
+        if evaluate(predicate, env):
+            return evaluate(body, env)
+    return False
+
+
+@expected_length(3)
+def eval_let(ast, env):
+    bindings = ast[1]
+    body = ast[2]
+    for binding in bindings:
+        if len(binding) != 2:
+            raise LispError('Wrong let expression {}'.format(binding))
+        variable = binding[0]
+        value = evaluate(binding[1], env)
+        env = env.extend({variable: value})
+    return evaluate(body, env)
+
+
+@expected_length(4)
+def eval_defn(ast, env):
+    var = ast[1]
+    if not is_symbol(var):
+        raise LispError('non-symbol assigment')
+
+    func = make_lambda(ast[2], ast[3], env)
+    env.set(var, func)
+    return '{} = {}'.format(var, func)
 
 
 SPECIAL_FORMS = {
@@ -213,7 +252,10 @@ SPECIAL_FORMS = {
     'cons': eval_cons,
     'head': eval_head,
     'tail': eval_tail,
-    'empty': eval_empty
+    'empty': eval_empty,
+    'cond': eval_cond,
+    'let': eval_let,
+    'defn': eval_defn
 }
 
 

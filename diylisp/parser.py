@@ -27,6 +27,8 @@ def parse(source):
         return int(exp)
     elif exp[0] == "'":
         return ['quote', parse(exp[1:])]
+    elif exp[0] == '"':
+        return String(exp[1:-1])
     elif exp[0] == '(':
         end_index = find_matching_paren(exp)
         expressions = split_exps(exp[1:end_index])
@@ -53,14 +55,17 @@ def find_matching_paren(source, start=0):
     assert source[start] == '('
     pos = start
     open_brackets = 1
+    inside_string = False
     while open_brackets > 0:
         pos += 1
         if len(source) == pos:
             raise LispError("Incomplete expression: %s" % source[start:])
-        if source[pos] == '(':
+        if source[pos] == '(' and not inside_string:
             open_brackets += 1
-        if source[pos] == ')':
+        if source[pos] == ')' and not inside_string:
             open_brackets -= 1
+        if source[pos] == '"' and source[pos - 1] != '\\':
+            inside_string = not inside_string
     return pos
 
 
@@ -92,6 +97,11 @@ def first_expression(source):
     if source[0] == "'":
         exp, rest = first_expression(source[1:])
         return source[0] + exp, rest
+    elif source[0] == '"':
+        for n in range(1, len(source)):
+            if source[n] == '"' and source[n - 1] != '\\':
+                return source[:n + 1], source[n + 1:]
+        raise LispError('Unclosed string')
     elif source[0] == "(":
         last = find_matching_paren(source)
         return source[:last + 1], source[last + 1:]
